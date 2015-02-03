@@ -1,0 +1,417 @@
+---
+title: "Shift Pilot - Survey Results"
+author: "Alexander Kahn"
+date: "February 1, 2015"
+output: pdf_document
+---
+
+Introduction
+============
+The Shift program is intended to be granular in improving the lives of the heavily impoverished. The goal is simply to provide capital resources to women and we show that the women involved with the pilot program did have positive results with the program. The 70 women who received distributions in the program report improvements in their lives and work across the board. This report is organized as follows: the next section will discuss the findings of the initial survey, following that will be an exploration into the exit survey, after that we'll compare the responses between the surveys.
+
+*NOTE*: This report will have code/graphics/tables interspersed with narrative, the code is displayed for transparency purposes.
+
+## Entrance Survey
+
+### Summary of the Data
+
+This data set includes 104 observations of 47 variables corresponding to the responses of 104 Ugandan women to a survey administered via a mobile device.
+
+```{r, echo=FALSE}
+setwd('~/Shift')
+```
+
+```{r}
+# load the graphics library used.
+library('ggplot2')
+# load the data
+bts <- dget("data/basic_transfer_data.R")
+```
+
+### Demographics
+
+#### Age
+
+The 104 women involved in the program range in age from 19 to 80.
+
+```{r, echo=FALSE}
+ggplot(bts, aes(x=age)) + 
+       geom_histogram(aes(y=..density..), binwidth=3, colour="black", fill="white") +
+       geom_density(alpha=.2, fill="#FF6666") +  
+       geom_vline(aes(xintercept=mean(age)), color="red", linetype="dashed", size=1) +
+       ggtitle("Age Distribution") + theme(plot.title = element_text(face="bold")) + 
+       xlab("Age (years)")
+```
+
+The diagram above shows most women are between 25 and 40 years of age with the mean shown as a dashed red line. If we break up the age range into bins like so:
+
+```{r}
+f_age <- cut(bts$age, breaks = 10)
+```
+
+We can look at various breakdowns by age, notably education.
+
+```{r, echo=FALSE}
+ggplot(bts, aes(f_age, fill = highest_edu_attained)) +
+       geom_bar() +
+       ggtitle("Education levels by Age") + theme(plot.title = element_text(face="bold")) +
+       xlab("Age (years)") + theme(axis.text.x =element_text(angle=30,hjust=1,vjust=1)) +
+       ylab("Number of Women") +
+       labs(fill = "Highest education level")
+```
+
+Here we can see that the younger women tend to have more education but the predominant education level is "Primary/basic."
+
+#### Family Life
+
+To explore some family dynamics, we can look at the women who are married and those who are the Head of their Household.
+
+```{r}
+table(bts$married)
+```
+
+The table above shows how many of the women are married.
+
+```{r}
+table(bts$head_of_household)
+```
+
+Now we can see most of the women are not the head of their household, but of the women who are married, how many consider themselves the head of the house?
+
+```{r}
+Married <- bts$married
+HeadOfHousehold <- bts$head_of_household
+xtabs(~ Married + HeadOfHousehold)
+```
+
+The above table shows that most of the women who are married (52.9%) do **not** consider themselves the head of the house compared to 19.2% who are married **and** consider themselves the head of the Household.
+
+Next we might consider the children, first we'll look at the break down of the number of children by education level.
+
+```{r, echo=FALSE}
+ggplot(bts, aes(x=num_children, fill=highest_edu_attained)) + geom_bar() +
+    ggtitle("Number of children by Education Level") + 
+    xlab("Number of Chilren") + 
+    ylab("Number of Women") +
+    labs(fill="Highest education level")
+```
+
+This makes it quite clear that education levels correlate with the number of children a woman has - the reason why this is the case varies but may be an indicator of the presence of family planning tools (birth control, abortion services, educational resources, etc.) or the willingness of the household to allow the prospective mother to make decisions. On the other hand, child and infant mortality may also influence this picture. Let's look at this from a different perspective.
+
+```{r}
+Married <- bts$married
+NumOfChildren <- bts$num_children
+HighestEduLevel <- bts$highest_edu_attained
+ftable(prop.table(xtabs( ~ Married + NumOfChildren + HighestEduLevel))*100)
+```
+
+The table highlights the disparities between the level of education and number of children, further broken down by whether the woman is married or not. 
+
+#### Health
+##### Individual
+
+Respondents indicated whether they consider themselves healthy or not and if they take medications or not.
+
+```{r}
+prop.table(table(bts$healthy))*100
+```
+
+Most of the women considered themselves healthy, that's not entirely reliable but luckily we have more information in the form of whether or not they take medications.
+
+```{r}
+prop.table(table(bts$medication))*100
+```
+
+The women that reported using medication were then asked what they used that medication for, the results of which are presented by the word cloud below.
+
+![](plots/meds_word_cloud.png)
+
+##### Family
+
+Respondents were also asked whether they consider their family healthy.
+
+```{r}
+prop.table(table(bts$healthy_family))
+```
+
+The women also indicated whether a family member takes mediation.
+
+```{r}
+prop.table(table(bts$family_takes_meds))
+```
+
+### Work
+
+102 of the 104 women self identify as farmers.
+
+```{r, echo=FALSE}
+ggplot(bts) + geom_bar(aes(x=enjoy_life)) + 
+            facet_grid(enjoy_farming ~ years_as_farmer) +
+            ggtitle("Experience and enjoyment in Farming & life") + 
+            theme(plot.title = element_text(face="bold")) +
+            xlab("Enjoy life") +
+            ylab("Number of women")
+```
+
+**NOTE:** The right y-axis breakdown is the `enjoy_farming` variable. 
+
+Here we can see that most of the women report enjoying life and their work as farmers, with few indicating they are unsure about their enjoyment with respect to farming.
+
+### Financial Situation
+
+First, let's explore the percentage of the women who live below certain thresholds.
+
+```{r}
+# Convert the reported weekly wages from UGX to USD
+# using the current spot rate (no inflation adjustment)
+daily_wage_usd <- ((bts$wage_per_week * 0.000372))/7
+```
+
+#### Below $1.00 per day
+
+```{r}
+(length(which(daily_wage_usd < 1)) / nrow(bts))*100
+```
+
+#### Below $1.50 per day
+
+```{r}
+(length(which(daily_wage_usd < 1.5)) / nrow(bts))*100
+```
+
+#### Below $2.00 per day 
+
+```{r}
+# $2.00
+(length(which(daily_wage_usd < 2)) / nrow(bts))*100
+```
+
+#### Spending habits
+
+Consider the three categories for spending habits: Food, Personal Items and House Repairs. Each variable is broken down by the amount of time since last spending.
+
+```{r}
+Food <- prop.table(table(bts$food))*100
+Personal_Items <- prop.table(table(bts$personal_items))*100
+House_Repairs <- prop.table(table(bts$house_repairs))*100
+rbind(Food, Personal_Items, House_Repairs)
+```
+
+Notice that almost two-thirds of the women rarely purchase personal items.
+
+The women reported their greatest expense, let's have a look.
+
+```{r, echo=FALSE}
+ggplot(bts, aes(x=greatest_expense)) + 
+    geom_bar(fill=c("blue", "green", "red", "purple"), alpha=0.7) + 
+    ggtitle("Reported Greatest Expense") + xlab("Expense") + 
+    ylab("Number of women")
+```
+
+We can see that School fees are indicated as the greatest expense most frequently, even when we control for the number of children. School fees are second-most only to Food in families with one child.
+
+```{r, echo=FALSE}
+ggplot(bts) + 
+    geom_bar(aes(x=greatest_expense), fill="purple", alpha=0.8) + 
+    facet_grid(. ~ num_children) +
+    ggtitle("Reported Greatest Expense by number of Children") +
+    theme(plot.title = element_text(face="bold")) +
+    xlab("Expense") + ylab("Number of women") +
+    theme(axis.text.x =element_text(angle=30,hjust=1,vjust=1))
+```
+
+#### Future spending Habits
+
+We asked the women what they would spend money on if they had more of it. This is what they reported.
+
+```{r, echo=FALSE}
+ggplot(bts, aes(income_effect_goods)) + geom_bar() + ggtitle("Spending decisions with more income") + theme(plot.title = element_text(face="bold")) + xlab("Goods/ Services") + ylab("Number of women")
+```
+
+As we can plainly see, 21 of the 104 women indicated "other." Let's look at what they said. Since it is all text data in need of some form of normalization, let's take a moment and go through that.
+
+```{r}
+# make an index of the values that aren't "n/a"
+index <- grep("n/a", bts$income_effect_goods_other)
+# subset the data
+IE.other <- bts$income_effect_goods_other[-index]
+# fix some spelling errors
+IE.other[21] <- "Start a retail shop"
+IE.other[19] <- "Small scale business"
+```
+
+Now that we have the data we need, let's aggregate the contents.
+
+```{r}
+grep("[bB]usiness", IE.other)
+grep("[fF]arm", IE.other)
+```
+
+This isn't really the best way to do this, let's take it a step further and do some natural language processing to get a sense of what these women are saying.
+
+```{r, echo=FALSE, error=FALSE, warning=FALSE, results='hide', message=FALSE}
+library('tm')
+library('wordcloud')
+```
+
+```{r, echo=FALSE}
+ie_other.corpus <- Corpus(VectorSource(IE.other))
+ie_other.corpus <- tm_map(ie_other.corpus, content_transformer(tolower))
+ie_other.corpus <- tm_map(ie_other.corpus, removePunctuation)
+ie_other.corpus <- tm_map(ie_other.corpus, removeNumbers)
+myStopWords <- stopwords('english')
+ie_other.corpus <- tm_map(ie_other.corpus, removeWords, myStopWords)
+TDM <- TermDocumentMatrix(ie_other.corpus, control = list(minWordLength = 1))
+m <- as.matrix(TDM)
+v <- sort(rowSums(m), decreasing=TRUE)
+myNames <- names(v)
+d <- data.frame(word=myNames, freq=v)
+wordcloud(d$word, d$freq, min.freq=2)
+```
+
+It is also worth noting that one woman mentioned that with additional income she would like to purchase medication and food for "sick child with HIV."
+
+### Enterprise Generation
+
+These women were also asked what business they would start if they got the working capital today.
+
+```{r}
+BusinessIdea <- bts$business_idea
+prop.table(table(BusinessIdea))*100
+```
+
+With 44.2% reporting agricultural business interests, we again see a commitment to farming by these women. Those that reported "other" indicated interest in food & drink, scaling an existing business or purchasing livestock.
+
+## Exit Survey
+
+```{r, echo=FALSE}
+setwd('~/Shift')
+bts2 <- dget('data/shift_data.R')
+```
+
+### Summary of the data
+
+The exit survey had 70 participants, 67 of which took the entrance survey. Some observations were removed because of non-response, some responses were altered because of presumed miscoding. See the source files for more details.
+
+### Change
+
+Respondents were asked if they perceive a change in their lives and work along with the 'magnitude' of change.
+
+```{r}
+# life changed
+table(bts2$life_changed)
+length(which(bts2$life_changed == 'Yes'))/length(bts2$life_changed)
+
+# direction of change
+table(bts2$life_delta)
+length(which(bts2$life_delta == 'Better'))/length(bts2$life_delta)
+```
+
+As we can see, there is a large perception of improvement among the women in their lives in general but let's see what happened at work:
+
+```{r}
+# work changed
+table(bts2$work_changed)
+length(which(bts2$work_changed == 'Yes'))/length(bts2$work_changed)
+
+# direction of change
+table(bts2$work_delta)
+length(which(bts2$work_delta == 'Better'))/length(bts2$work_delta)
+
+```
+
+We notice a similar set of responses here. These women feel that participation in the program does have the capacity to shift their lives in a positive direction.
+
+### Fund Use
+
+Many of these women participate in a Savings and Credit Cooperative (SACCO), a savings and loan organization similar to a Credit Union that self-enforces so funds cannot be used without group approval, others are more independent. We asked these women how they decided to use the funds available to them. 
+
+```{r, echo=FALSE}
+ggplot(bts2, aes(x=shift_money_use)) + geom_histogram(binwidth=.45, fill = c('blue', 'red', 'green', 'orange'), alpha=0.8) +
+  ggtitle("Shift Income Use") + xlab("Spending Category") + ylab("Count")
+```
+
+Just over half (62.9%) of the women used their funds for school fees while just over a quarter (25.7%) indicated using the funds for food. It is important to note that these expenses were 'ear-marked' for the transferred capital, as they were the most burdensome on household income. Using the money for this purpose freed them to allocate their resources to other expenses and investing in their respective ventures.
+
+The women were asked what they would spend additional Shift funds on, they reported:
+
+```{r, echo=FALSE}
+ggplot(bts2, aes(x=additional_money)) + 
+  geom_histogram(binwidth=.45, fill=c('blue', 'red', 'gold','purple', 'green'),
+                 alpha=0.8) +
+  ggtitle('Additional Shift Income Use') + 
+  xlab('Spending Category') + ylab('Count')
+```
+
+The women indicate a desire to continue investing in production materials. The circumstances of extreme poverty (< US$1.25/day) often mean not having a reliable source of capital or income that allows one to make larger, up-front payments (tuition and durable goods for example). Having the ability to make those payments allows people to have some liquidity and allocate assets like human capital more efficiently. To that end,  
+
+```{r}
+# profit
+length(which(bts2$profit == "Yes"))/length(bts2$profit)
+```
+
+85.7% report turning a profit with their businesses.
+
+
+### Expense Landscape
+
+While profits are a good indicator of individual success, let's look at the expenditure side of the story. The women report their greatest expenses as follows:
+
+```{r, echo=FALSE}
+ggplot(bts2, aes(x=greatest_expense)) + 
+  geom_histogram(binwidth=.45, fill = c('blue', 'red', 'purple','gold', 'green',
+                                        'orange'), alpha=0.8) +
+  ggtitle("Greatest Expense") + xlab("Spending Category") + ylab("Count")
+```
+
+In contrast to the first survey, we see the greatest expense is now work supplies. This is logical given the allocation of the Shift capital toward School fees. It is worth noting here that funds are fungible; all monies are interchangeable, but many people perceive money to be pre-allocated in discrete chunks. The significance of this observation is we can see where priorities are located: the respondents chose to indicate to which discrete bin they saw themselves allocating these funds.
+
+#### Food
+
+When it comes to food, the women report having two meals a day on average:
+
+```{r}
+prop.table(table(bts2$avg_daily_meals))*100
+```
+
+Most also report no additional spending on food as well:
+
+```{r}
+prop.table(table(bts2$spend_more_on_food_last_month))*100
+```
+
+#### Health
+
+Most of the women consider themselves healthy (91.4%) with 42.9% of them going to a health care professional regularly for check-ups while 54.3% of the women only visit health care professionals in emergencies, 2.9% visit regularly for treatment of a chronic illness or condition. With respect to their children, 75.7% of the women reported only taking them to health care professionals in cases of emergency, although most (61.4%) had taken a child to a professional within the last month. There could be some cultural explanation (village healers, suspicion of western style medicine, etc.) for the utilization of health care resources but another plausible explanation is the increased level of capital between these women has not influenced these decisions at this time, it may highlight access problems, or the amount of time it takes to physically reach a health care practitioner since the opportunity cost with respect to labor hours may outweigh the perceived benefit of preventative or regular care.
+
+### Investments
+
+The women were asked if they had financed a business:
+
+```{r, echo=FALSE}
+ggplot(bts2, aes(x=finance_business)) + geom_histogram(binwidth=0.45, alpha=0.9) + ggtitle("Business Financed") + xlab("Industry") + ylab("count")
+```
+
+We can see that agriculture is the dominant industry for these women (98.6% self-identify as farmers). So when we ask what they would like to do with additional capital:
+
+```{r, echo=FALSE}
+ggplot(bts2, aes(x=investments)) + geom_histogram(binwidth=0.45, alpha=0.9) + ggtitle("Business Financed") + xlab("Industry") + ylab("Count")
+```
+
+They believe that there are more marginal gains in profit available in the agriculture market and would invest to capture them.
+
+### Investment Climate
+
+It was briefly mentioned earlier that many of these women participate in SACCOs.
+
+```{r}
+prop.table(table(bts2$savings_group))
+```
+
+In fact, 75.7% are a part of a savings group in their communities. These groups facilitate accountability but also information about business activity around the community. Most importantly, these women trust these groups with their money.
+
+```{r}
+prop.table(table(bts2$trust_savings_group))
+```
+
+The most important observation about trusting the savings group means not only trusting in the mechanism but the people. They ultimately trust each other. Ideally, according to 85.3% of the respondents, they would be a part of a SACCO or savings group.
